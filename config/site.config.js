@@ -7,7 +7,7 @@ module.exports = {
   // Make sure this is exactly the same as the email address you use to sign into your Microsoft account.
   // You can also put this in your Vercel's environment variable 'NEXT_PUBLIC_USER_PRINCIPLE_NAME' if you worry about
   // your email being exposed in public.
-  userPrincipalName: process.env.NEXT_PUBLIC_USER_PRINCIPLE_NAME || 'drive-2@office.ljzd-pro.asia',
+  userPrincipalName: process.env.NEXT_PUBLIC_USER_PRINCIPLE_NAME || '',
 
   // [OPTIONAL] This is the website icon to the left of the title inside the navigation bar. It should be placed under the
   // /public directory of your GitHub project (not your OneDrive folder!), and referenced here by its relative path to /public.
@@ -33,7 +33,10 @@ module.exports = {
   // googleFontMono - the monospace font used in onedrive-vercel-index.
   googleFontMono: 'Fira Mono',
   // googleFontLinks -  an array of links for referencing the google font assets.
-  googleFontLinks: ['https://fonts.googleapis.com/css2?family=Fira+Mono&family=Inter:wght@400;500;700&display=swap'],
+  googleFontLinks: [
+    'https://cdn.jsdelivr.net/npm/@fontsource/fira-mono@5.1.0/index.min.css',
+    'https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.0/index.min.css'
+  ],
 
   // [OPTIONAL] The footer component of your website. You can write HTML here, but you need to escape double
   // quotes - changing " to \". You can write anything here, and if you like badges, generate some with https://shields.io
@@ -45,7 +48,7 @@ module.exports = {
   protectedRoutes: ['/Private', '/MC动制'],
 
   // [OPTIONAL] Use "" here if you want to remove this email address from the nav bar.
-  email: 'mailto:ljzd@office.ljzd-pro.asia',
+  email: 'mailto:ljzd@ljzd.link',
 
   // [OPTIONAL] This is an array of names and links for setting your social information and links.
   // In the latest update, all brand icons inside font awesome is supported and the icon to render is based on the name
