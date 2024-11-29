@@ -28,7 +28,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return
   }
 
-  const { path = '/', odpt = '', proxy = false } = req.query
+  const { path = '/', odpt = '' } = req.query
+
+  let proxy = false
+  try {
+    proxy = req.query.proxy ? JSON.parse(req.query.proxy as string) : false
+  } catch {
+    res.status(400).json({ error: 'Proxy query invalid.' })
+    return
+  }
 
   // Sometimes the path parameter is defaulted to '[...path]' which we need to handle
   if (path === '[...path]') {
