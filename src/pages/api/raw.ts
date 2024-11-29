@@ -21,10 +21,7 @@ export function runCorsMiddleware(req: NextApiRequest, res: NextApiResponse) {
   })
 }
 
-export default async function handler(
-  req: NextApiRequest & {query: {path: string, odpt: string, proxy: boolean}},
-  res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const accessToken = await getAccessToken()
   if (!accessToken) {
     res.status(403).json({ error: 'No access token.' })
