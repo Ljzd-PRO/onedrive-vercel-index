@@ -22,7 +22,7 @@ export function runCorsMiddleware(req: NextApiRequest, res: NextApiResponse) {
 }
 
 export default async function handler(
-  req: NextApiRequest & {query: {path: string, odpt: string, proxy: boolean}},
+  req: NextApiRequest & { query: Partial<{ path: string; odpt: string; proxy: boolean }> },
   res: NextApiResponse
 ) {
   const accessToken = await getAccessToken()
