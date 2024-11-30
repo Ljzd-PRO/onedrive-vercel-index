@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import axios, { AxiosResponseHeaders } from 'axios'
 import Cors from 'cors'
 
-import { driveApi, cacheControlHeader } from '../../../config/api.config'
+import { driveApi, cacheControlHeader, cdnCacheControlHeader } from '../../../config/api.config'
 import { encodePath, getAccessToken, checkAuthRoute } from '.'
 
 // CORS middleware for raw links: https://nextjs.org/docs/api-routes/api-middlewares
@@ -84,6 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           responseType: 'stream',
         })
         headers['Cache-Control'] = cacheControlHeader
+        headers['CDN-Cache-Control'] = cdnCacheControlHeader
         // Send data stream as response
         res.writeHead(200, headers as AxiosResponseHeaders)
         stream.pipe(res)
