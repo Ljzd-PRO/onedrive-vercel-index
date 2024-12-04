@@ -10,7 +10,7 @@ let accessTokenExpiryAt: number
 
 export async function getOdAuthTokens(): Promise<{ accessToken: unknown; refreshToken: unknown }> {
   localRefreshToken = localRefreshToken || (await kv.get(`${siteConfig.kvPrefix}refresh_token`))
-  if (!localAccessToken || Date.now() < accessTokenExpiryAt) {
+  if (!localAccessToken || Date.now() > accessTokenExpiryAt) {
     localAccessToken = await kv.get(`${siteConfig.kvPrefix}access_token`)
     accessTokenExpiryAt = await kv
       .ttl(`${siteConfig.kvPrefix}access_token`)
