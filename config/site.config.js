@@ -47,6 +47,10 @@ module.exports = {
   // the directories in which you have .password set. Check the documentation for details.
   protectedRoutes: ['/Images'],
 
+  // [OPTIONAL] This is where you specify the files in the folders that are password protected (only apply to raw file request). It is an array of paths pointing to all
+  // the directories in which you have .password set.
+  accessProtectedRoutes: [],
+
   // [OPTIONAL] Use "" here if you want to remove this email address from the nav bar.
   email: 'mailto:me@ljzd.link',
 
