@@ -79,23 +79,26 @@ export async function getAccessToken(): Promise<string> {
 /**
  * Match protected routes in site config to get path to required auth token
  * @param path Path cleaned in advance
+ * @param accessFile Whether to access the file
  * @returns Path to required auth token. If not required, return empty string.
  */
-export function getAuthTokenPath(path: string) {
+export function getAuthTokenPath(path: string, accessFile: boolean = false) {
   // Ensure trailing slashes to compare paths component by component. Same for protectedRoutes.
   // Since OneDrive ignores case, lower case before comparing. Same for protectedRoutes.
   path = path.toLowerCase() + '/'
-  const protectedRoutes = siteConfig.protectedRoutes as string[]
+  const protectedRoutes = (accessFile ? siteConfig.accessProtectedRoutes : siteConfig.protectedRoutes) as string[]
   let authTokenPath = ''
   for (let r of protectedRoutes) {
     if (typeof r !== 'string') continue
     r = r.toLowerCase().replace(/\/$/, '') + '/'
     if (path.startsWith(r)) {
-      authTokenPath = `${r}.password`
+      authTokenPath = accessFile ? `${r}.access.password` : `${r}.password`
       break
     }
   }
-  return authTokenPath
+  // If to access file and the path did not set in accessProtectedRoutes,
+  // then try to use the auth token path set in protectedRoutes.
+  return (accessFile && !authTokenPath) ? getAuthTokenPath(path, false) : authTokenPath
 }
 
 /**
@@ -108,16 +111,17 @@ export function getAuthTokenPath(path: string) {
  *
  * @param cleanPath Sanitised directory path, used for matching whether route is protected
  * @param accessToken OneDrive API access token
- * @param req Next.js request object
- * @param res Next.js response object
+ * @param odTokenHeader od-protected-token header from request
+ * @param accessFile Whether to access file or folder list
  */
 export async function checkAuthRoute(
   cleanPath: string,
   accessToken: string,
-  odTokenHeader: string
+  odTokenHeader: string,
+  accessFile: boolean = false
 ): Promise<{ code: 200 | 401 | 404 | 500; message: string }> {
   // Handle authentication through .password
-  const authTokenPath = getAuthTokenPath(cleanPath)
+  const authTokenPath = getAuthTokenPath(cleanPath, accessFile)
 
   // Fetch password from remote file content
   if (authTokenPath === '') {
