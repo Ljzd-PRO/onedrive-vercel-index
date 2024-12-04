@@ -15,6 +15,7 @@ export async function getOdAuthTokens(): Promise<{ accessToken: unknown; refresh
     accessTokenExpiryAt = await kv
       .ttl(`${siteConfig.kvPrefix}access_token_drive_2`)
       .then(ttl => (ttl >= 0 ? Date.now() + ttl * 1000 : 0))
+    console.log('Fetched access token from Redis and updated local access token.')
   }
   return {
     accessToken: localAccessToken,
