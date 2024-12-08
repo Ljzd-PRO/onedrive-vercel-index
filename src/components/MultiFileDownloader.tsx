@@ -76,7 +76,6 @@ async function concurrentDownload({
       } catch (e) {
         if (!(e instanceof DOMException) || e.name !== 'NotFoundError') {
           finished++
-          console.info(`Download file existed: ${dir.name}/${name}`)
           continue
         }
       }
