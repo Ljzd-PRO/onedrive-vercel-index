@@ -93,7 +93,9 @@ async function concurrentDownload({
         blob = await response.blob()
       } catch (e) {
         promoteProcess()
-        toast.error(`File download failed: ${new URL(url, getBaseUrl()).searchParams.get('path')}`)
+        const path = new URL(url, getBaseUrl()).searchParams.get('path')
+        toast.error(path)
+        console.error(`File download failed: ${path}`)
         continue
       }
 
