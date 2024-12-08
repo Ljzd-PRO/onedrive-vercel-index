@@ -70,5 +70,5 @@ module.exports = {
   datetimeFormat: 'YYYY-MM-DD HH:mm:ss',
 
   // This is the maximum number of concurrent download connections.
-  maxDownloadConnections: 6,
+  maxDownloadConnections: 16,
 }
