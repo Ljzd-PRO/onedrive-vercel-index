@@ -1,10 +1,12 @@
 import { NextRouter } from 'next/router'
 import toast from 'react-hot-toast'
-import JSZip from 'jszip'
 import { useTranslation } from 'next-i18next'
 
 import { fetcher } from '../utils/fetchWithSWR'
 import { getStoredToken } from '../utils/protectedRouteHandler'
+import JSZip from 'jszip'
+import siteConfig from '../../config/site.config'
+import { getBaseUrl } from '../utils/getBaseUrl'
 
 /**
  * A loading toast component with file download progress support
@@ -52,13 +54,67 @@ export function downloadBlob({ blob, name }: { blob: Blob; name: string }) {
   el.remove()
 }
 
-/**
- * Download multiple files after compressing them into a zip
- * @param toastId Toast ID to be used for toast notification
- * @param files Files to be downloaded
- * @param folder Optional folder name to hold files, otherwise flatten files in the zip
- */
-export async function downloadMultipleFiles({
+async function concurrentDownload({
+  toastId,
+  router,
+  tasks,
+}: {
+  toastId: string
+  router: NextRouter
+  tasks: { dir: FileSystemDirectoryHandle; name: string; url: string }[]
+}): Promise<void> {
+  let finished = 0
+  let hasFailedTask = false
+  const queue = tasks.slice()
+  const promoteProcess = () => {
+    finished++
+    toast.loading(<DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />, {
+      id: toastId,
+    })
+  }
+  const downloadTask = async () => {
+    while (queue.length > 0) {
+      const { dir, name, url } = queue.shift()!
+
+      // Skip if file already exists
+      try {
+        await dir.getFileHandle(name)
+        promoteProcess()
+        continue
+      } catch (e) {
+        if (!(e instanceof DOMException && e.name === 'NotFoundError')) {
+          promoteProcess()
+          continue
+        }
+      }
+
+      let blob: FileSystemWriteChunkType
+      try {
+        const response = await fetch(url)
+        blob = await response.blob()
+      } catch (e) {
+        hasFailedTask = true
+        promoteProcess()
+        const path = new URL(url, getBaseUrl()).searchParams.get('path')
+        toast.error(path)
+        console.error(`File download failed: ${path}`)
+        continue
+      }
+
+      const fileHandle = await dir.getFileHandle(name, { create: true })
+      const writableStream = await fileHandle.createWritable()
+      await writableStream.write(blob)
+      await writableStream.close()
+      promoteProcess()
+    }
+  }
+  const concurrentDownloads = Array.from({ length: siteConfig.maxDownloadConnections }).map(downloadTask)
+  await Promise.allSettled(concurrentDownloads).then(results => {
+    if (hasFailedTask || results.some(result => result.status === 'rejected')) throw Error('Concurrent Download failed')
+  })
+}
+
+async function downloadMultipleFilesToZip({
   toastId,
   router,
   files,
@@ -92,17 +148,47 @@ export async function downloadMultipleFiles({
 }
 
 /**
- * Download hierarchical tree-like files after compressing them into a zip
+ * Download multiple files after compressing them into a zip
  * @param toastId Toast ID to be used for toast notification
- * @param files Files to be downloaded. Array of file and folder items excluding root folder.
- * Folder items MUST be in front of its children items in the array.
- * Use async generator because generation of the array may be slow.
- * When waiting for its generation, we can meanwhile download bodies of already got items.
- * Only folder items can have url undefined.
- * @param basePath Root dir path of files to be downloaded
+ * @param files Files to be downloaded
  * @param folder Optional folder name to hold files, otherwise flatten files in the zip
  */
-export async function downloadTreelikeMultipleFiles({
+export async function downloadMultipleFiles({
+  toastId,
+  router,
+  files,
+  folder,
+}: {
+  toastId: string
+  router: NextRouter
+  files: { name: string; url: string }[]
+  folder?: string
+}): Promise<void> {
+  let directoryHandle: FileSystemDirectoryHandle | null = null
+  let error: unknown
+  try {
+    directoryHandle = await window.showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      return
+    } else {
+      error = e
+    }
+  }
+  if (!directoryHandle) {
+    console.warn(`Failed to open directory picker, check if the browser supports it: ${error}`)
+    return await downloadMultipleFilesToZip({ toastId, router, files, folder })
+  }
+
+  const dir = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
+  await concurrentDownload({
+    toastId,
+    router,
+    tasks: Array.from(files).map(({ name, url }) => ({ dir, name, url })),
+  })
+}
+
+async function downloadTreelikeMultipleFilesToZip({
   toastId,
   router,
   files,
@@ -157,6 +243,86 @@ export async function downloadTreelikeMultipleFiles({
     })
   })
   downloadBlob({ blob: b, name: folder ? folder + '.zip' : 'download.zip' })
+}
+
+/**
+ * Download hierarchical tree-like files after compressing them into a zip
+ * @param toastId Toast ID to be used for toast notification
+ * @param files Files to be downloaded. Array of file and folder items excluding root folder.
+ * Folder items MUST be in front of its children items in the array.
+ * Use async generator because generation of the array may be slow.
+ * When waiting for its generation, we can meanwhile download bodies of already got items.
+ * Only folder items can have url undefined.
+ * @param basePath Root dir path of files to be downloaded
+ * @param folder Optional folder name to hold files, otherwise flatten files in the zip
+ */
+export async function downloadTreelikeMultipleFiles({
+  toastId,
+  router,
+  files,
+  basePath,
+  folder,
+}: {
+  toastId: string
+  router: NextRouter
+  files: AsyncGenerator<{
+    name: string
+    url?: string
+    path: string
+    isFolder: boolean
+  }>
+  basePath: string
+  folder?: string
+}): Promise<void> {
+  let directoryHandle: FileSystemDirectoryHandle | null = null
+  let error: unknown
+  try {
+    directoryHandle = await window.showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      return
+    } else {
+      error = e
+    }
+  }
+  if (!directoryHandle) {
+    console.warn(`Failed to open directory picker, check if the browser supports it: ${error}`)
+    return await downloadTreelikeMultipleFilesToZip({ toastId, router, files, folder, basePath })
+  }
+
+  const root = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
+  const map = [{ path: basePath, dir: root }]
+  const tasks: { dir: FileSystemDirectoryHandle; name: string; url: string }[] = []
+
+  // Add selected file blobs according to its path
+  for await (const { name, url, path, isFolder } of files) {
+    // Search parent dir in map
+    const i = map
+      .slice()
+      .reverse()
+      .findIndex(
+        ({ path: parent }) =>
+          path.substring(0, parent.length) === parent && path.substring(parent.length + 1).indexOf('/') === -1
+      )
+    if (i === -1) {
+      throw new Error('File array does not satisfy requirement')
+    }
+
+    // Add file or folder
+    const dir = map[map.length - 1 - i].dir
+    if (isFolder) {
+      map.push({ path, dir: (await dir.getDirectoryHandle(name, { create: true }))! })
+    } else {
+      // @ts-ignore
+      tasks.push({ dir, name, url })
+    }
+  }
+
+  await concurrentDownload({
+    toastId,
+    router,
+    tasks: tasks,
+  })
 }
 
 interface TraverseItem {
