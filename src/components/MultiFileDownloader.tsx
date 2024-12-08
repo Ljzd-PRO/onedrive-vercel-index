@@ -65,43 +65,44 @@ async function concurrentDownload({
   let finished = 0
   const queue = tasks.slice()
   const downloadTask = async () => {
-    if (queue.length === 0) return
-    const { dir, name, url } = queue.shift()!
+    while (queue.length > 0) {
+      const { dir, name, url } = queue.shift()!
 
-    let fileHandle: FileSystemFileHandle
-    try {
-      // Skip if file already exists
-      await dir.getFileHandle(name)
-      return
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'NotFoundError') {
-        fileHandle = await dir.getFileHandle(name, { create: true })
-      } else {
-        console.error(`Create download file failed: ${dir.name}/${name}`)
+      let fileHandle: FileSystemFileHandle
+      try {
+        // Skip if file already exists
+        await dir.getFileHandle(name)
         if (queue.length > 0) await downloadTask()
-        return
+        continue
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'NotFoundError') {
+          fileHandle = await dir.getFileHandle(name, { create: true })
+        } else {
+          console.error(`Create download file failed: ${dir.name}/${name}`)
+          if (queue.length > 0) await downloadTask()
+          continue
+        }
       }
+
+      let blob: FileSystemWriteChunkType
+      try {
+        const response = await fetch(url)
+        blob = await response.blob()
+      } catch (e) {
+        console.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
+        if (queue.length > 0) await downloadTask()
+        continue
+      }
+
+      const writableStream = await fileHandle.createWritable()
+      await writableStream.write(blob)
+      await writableStream.close()
+
+      finished++
+      toast.loading(<DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />, {
+        id: toastId,
+      })
     }
-
-    let blob: FileSystemWriteChunkType
-    try {
-      const response = await fetch(url)
-      blob = await response.blob()
-    } catch (e) {
-      console.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
-      if (queue.length > 0) await downloadTask()
-      return
-    }
-
-    const writableStream = await fileHandle.createWritable()
-    await writableStream.write(blob)
-    await writableStream.close()
-
-    finished++
-    toast.loading(<DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />, {
-      id: toastId,
-    })
-    if (queue.length > 0) await downloadTask()
   }
   const concurrentDownloads = Array.from({ length: siteConfig.maxDownloadConnections }).map(downloadTask)
   await Promise.allSettled(concurrentDownloads).then(results => {
