@@ -68,10 +68,31 @@ async function concurrentDownload({
     if (queue.length === 0) return
 
     const { dir, name, url } = queue.shift()!
-    const response = await fetch(url)
-    const blob = await response.blob()
+    let blob: FileSystemWriteChunkType
+    try {
+      const response = await fetch(url)
+      blob = await response.blob()
+    } catch (e) {
+      console.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
+      if (queue.length > 0) await downloadTask()
+      return
+    }
 
-    const fileHandle = await dir.getFileHandle(name, { create: true })
+    let fileHandle: FileSystemFileHandle
+    try {
+      // Skip if file already exists
+      await dir.getFileHandle(name)
+      return
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'NotFoundError') {
+        fileHandle = await dir.getFileHandle(name, { create: true })
+      } else {
+        console.error(`Create download file failed: ${dir.name}/${name}`)
+        if (queue.length > 0) await downloadTask()
+        return
+      }
+    }
+
     const writableStream = await fileHandle.createWritable()
     await writableStream.write(blob)
     await writableStream.close()
@@ -83,7 +104,13 @@ async function concurrentDownload({
     if (queue.length > 0) await downloadTask()
   }
   const concurrentDownloads = Array.from({ length: siteConfig.maxDownloadConnections }).map(downloadTask)
-  await Promise.allSettled(concurrentDownloads)
+  await Promise.allSettled(concurrentDownloads).then(results => {
+    if (results.some(result => result.status === 'rejected')) {
+      const message = 'Concurrent Download failed'
+      console.error(message)
+      throw Error(message)
+    }
+  })
 }
 
 async function downloadMultipleFilesToZip({
