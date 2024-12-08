@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next'
 import { fetcher } from '../utils/fetchWithSWR'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import JSZip from 'jszip'
+import siteConfig from '../../config/site.config'
 
 /**
  * A loading toast component with file download progress support
@@ -50,6 +51,39 @@ export function downloadBlob({ blob, name }: { blob: Blob; name: string }) {
   el.click()
   window.URL.revokeObjectURL(bUrl)
   el.remove()
+}
+
+async function concurrentDownload({
+  toastId,
+  router,
+  tasks,
+}: {
+  toastId: string
+  router: NextRouter
+  tasks: { dir: FileSystemDirectoryHandle; name: string; url: string }[]
+}): Promise<void> {
+  let finished = 0
+  const queue = tasks.slice()
+  const downloadTask = async () => {
+    if (queue.length === 0) return
+
+    const { dir, name, url } = queue.shift()!
+    const response = await fetch(url, { keepalive: false })
+    const blob = await response.blob()
+
+    const fileHandle = await dir.getFileHandle(name, { create: true })
+    const writableStream = await fileHandle.createWritable()
+    await writableStream.write(blob)
+    await writableStream.close()
+
+    finished++
+    toast.loading(<DownloadingToast router={router} progress={((finished / queue.length) * 100).toFixed(0)} />, {
+      id: toastId,
+    })
+    if (queue.length > 0) await downloadTask()
+  }
+  const concurrentDownloads = Array.from({ length: siteConfig.maxDownloadConnections }).map(downloadTask)
+  await Promise.allSettled(concurrentDownloads)
 }
 
 async function downloadMultipleFilesToZip({
@@ -119,29 +153,11 @@ export async function downloadMultipleFiles({
   }
 
   const dir = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
-  let finished = 0
-  const tasks: Promise<void>[] = []
-
-  // Add selected file blobs to zip
-  for (const { name, url } of files) {
-    tasks.push(
-      dir.getFileHandle(name, { create: true }).then(async fileHandle => {
-        await fileHandle.createWritable().then(async writableStream => {
-          await writableStream.write(
-            await fetch(url).then(async r => {
-              return await r.blob()
-            })
-          )
-          await writableStream.close()
-          finished++
-          toast.loading(<DownloadingToast router={router} progress={((finished / files.length) * 100).toFixed(0)} />, {
-            id: toastId,
-          })
-        })
-      })
-    )
-  }
-  await Promise.allSettled(tasks)
+  await concurrentDownload({
+    toastId,
+    router,
+    tasks: Array.from(files).map(({ name, url }) => ({ dir, name, url })),
+  })
 }
 
 async function downloadTreelikeMultipleFilesToZip({
@@ -248,10 +264,9 @@ export async function downloadTreelikeMultipleFiles({
 
   const root = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
   const map = [{ path: basePath, dir: root }]
-  let finished = 0
-  const tasks: Promise<void>[] = []
+  const tasks: { dir: FileSystemDirectoryHandle; name: string; url: string }[] = []
 
-  // Add selected file blobs to zip according to its path
+  // Add selected file blobs according to its path
   for await (const { name, url, path, isFolder } of files) {
     // Search parent dir in map
     const i = map
@@ -265,33 +280,21 @@ export async function downloadTreelikeMultipleFiles({
       throw new Error('File array does not satisfy requirement')
     }
 
-    // Add file or folder to zip
+    // Add file or folder
     const dir = map[map.length - 1 - i].dir
     if (isFolder) {
       map.push({ path, dir: (await dir.getDirectoryHandle(name, { create: true }))! })
     } else {
-      tasks.push(
-        dir.getFileHandle(name, { create: true }).then(async fileHandle => {
-          await fileHandle.createWritable().then(async writableStream => {
-            await writableStream.write(
-              await fetch(url!).then(async r => {
-                return await r.blob()
-              })
-            )
-            await writableStream.close()
-            finished++
-            toast.loading(
-              <DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />,
-              {
-                id: toastId,
-              }
-            )
-          })
-        })
-      )
+      // @ts-ignore
+      tasks.push({ dir, name, url })
     }
   }
-  await Promise.allSettled(tasks)
+
+  await concurrentDownload({
+    toastId,
+    router,
+    tasks: tasks,
+  })
 }
 
 interface TraverseItem {
