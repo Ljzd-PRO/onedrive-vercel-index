@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next'
 
 import { fetcher } from '../utils/fetchWithSWR'
 import { getStoredToken } from '../utils/protectedRouteHandler'
+import { showDirectoryPicker } from '../types/window'
 
 /**
  * A loading toast component with file download progress support
@@ -69,26 +70,28 @@ export async function downloadMultipleFiles({
   files: { name: string; url: string }[]
   folder?: string
 }): Promise<void> {
-  const zip = new JSZip()
-  const dir = folder ? zip.folder(folder)! : zip
+  const directoryHandle = await showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
+  const dir = folder ? await directoryHandle.getDirectoryHandle(folder, {create: true}) : directoryHandle
 
   // Add selected file blobs to zip
-  files.forEach(({ name, url }) => {
-    dir.file(
+  files.forEach(({ name, url }, index) => {
+    dir.getFileHandle(
       name,
-      fetch(url).then(r => {
-        return r.blob()
+      { create: true },
+    ).then(fileHandle => {
+      fileHandle.createWritable()
+      .then(async writableStream => {
+        await writableStream.write(
+          await fetch(url).then(r => {
+            return r.blob()
+          })
+        )
+        toast.loading(<DownloadingToast router={router} progress={(index / files.length).toFixed(0)} />, {
+          id: toastId,
+        })
       })
-    )
-  })
-
-  // Create zip file and download it
-  const b = await zip.generateAsync({ type: 'blob' }, metadata => {
-    toast.loading(<DownloadingToast router={router} progress={metadata.percent.toFixed(0)} />, {
-      id: toastId,
     })
   })
-  downloadBlob({ blob: b, name: folder ? folder + '.zip' : 'download.zip' })
 }
 
 /**
