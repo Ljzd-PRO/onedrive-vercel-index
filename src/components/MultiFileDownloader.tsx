@@ -128,8 +128,8 @@ export async function downloadMultipleFiles({
       dir.getFileHandle(name, { create: true }).then(async fileHandle => {
         await fileHandle.createWritable().then(async writableStream => {
           await writableStream.write(
-            await fetch(url).then(r => {
-              return r.blob()
+            await fetch(url).then(async r => {
+              return await r.blob()
             })
           )
           await writableStream.close()
@@ -274,8 +274,8 @@ export async function downloadTreelikeMultipleFiles({
         dir.getFileHandle(name, { create: true }).then(async fileHandle => {
           await fileHandle.createWritable().then(async writableStream => {
             await writableStream.write(
-              await fetch(url!).then(r => {
-                return r.blob()
+              await fetch(url!).then(async r => {
+                return await r.blob()
               })
             )
             await writableStream.close()
