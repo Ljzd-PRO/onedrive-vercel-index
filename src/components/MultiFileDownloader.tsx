@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next'
 
 import { fetcher } from '../utils/fetchWithSWR'
 import { getStoredToken } from '../utils/protectedRouteHandler'
-import { showDirectoryPicker } from '../types/window'
+import JSZip from 'jszip'
 
 /**
  * A loading toast component with file download progress support
@@ -52,6 +52,39 @@ export function downloadBlob({ blob, name }: { blob: Blob; name: string }) {
   el.remove()
 }
 
+async function downloadMultipleFilesToZip({
+  toastId,
+  router,
+  files,
+  folder,
+}: {
+  toastId: string
+  router: NextRouter
+  files: { name: string; url: string }[]
+  folder?: string
+}): Promise<void> {
+  const zip = new JSZip()
+  const dir = folder ? zip.folder(folder)! : zip
+
+  // Add selected file blobs to zip
+  files.forEach(({ name, url }) => {
+    dir.file(
+      name,
+      fetch(url).then(r => {
+        return r.blob()
+      })
+    )
+  })
+
+  // Create zip file and download it
+  const b = await zip.generateAsync({ type: 'blob' }, metadata => {
+    toast.loading(<DownloadingToast router={router} progress={metadata.percent.toFixed(0)} />, {
+      id: toastId,
+    })
+  })
+  downloadBlob({ blob: b, name: folder ? folder + '.zip' : 'download.zip' })
+}
+
 /**
  * Download multiple files after compressing them into a zip
  * @param toastId Toast ID to be used for toast notification
@@ -69,7 +102,22 @@ export async function downloadMultipleFiles({
   files: { name: string; url: string }[]
   folder?: string
 }): Promise<void> {
-  const directoryHandle = await showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
+  let directoryHandle: FileSystemDirectoryHandle | null = null
+  let error: unknown
+  try {
+    directoryHandle = await window.showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      return
+    } else {
+      error = e
+    }
+  }
+  if (!directoryHandle) {
+    console.warn(`Failed to open directory picker, check if the browser supports it: ${error}`)
+    return await downloadMultipleFilesToZip({ toastId, router, files, folder })
+  }
+
   const dir = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
   let finished = 0
 
@@ -90,6 +138,63 @@ export async function downloadMultipleFiles({
       })
     })
   })
+}
+
+async function downloadTreelikeMultipleFilesToZip({
+  toastId,
+  router,
+  files,
+  basePath,
+  folder,
+}: {
+  toastId: string
+  router: NextRouter
+  files: AsyncGenerator<{
+    name: string
+    url?: string
+    path: string
+    isFolder: boolean
+  }>
+  basePath: string
+  folder?: string
+}): Promise<void> {
+  const zip = new JSZip()
+  const root = folder ? zip.folder(folder)! : zip
+  const map = [{ path: basePath, dir: root }]
+
+  // Add selected file blobs to zip according to its path
+  for await (const { name, url, path, isFolder } of files) {
+    // Search parent dir in map
+    const i = map
+      .slice()
+      .reverse()
+      .findIndex(
+        ({ path: parent }) =>
+          path.substring(0, parent.length) === parent && path.substring(parent.length + 1).indexOf('/') === -1
+      )
+    if (i === -1) {
+      throw new Error('File array does not satisfy requirement')
+    }
+
+    // Add file or folder to zip
+    const dir = map[map.length - 1 - i].dir
+    if (isFolder) {
+      map.push({ path, dir: dir.folder(name)! })
+    } else {
+      dir.file(
+        name,
+        fetch(url!).then(r => r.blob())
+      )
+    }
+  }
+
+  // Create zip file and download it
+  const b = await zip.generateAsync({ type: 'blob' }, metadata => {
+    toast.loading(<DownloadingToast router={router} progress={metadata.percent.toFixed(0)} />, {
+      id: toastId,
+    })
+  })
+  downloadBlob({ blob: b, name: folder ? folder + '.zip' : 'download.zip' })
 }
 
 /**
@@ -121,7 +226,22 @@ export async function downloadTreelikeMultipleFiles({
   basePath: string
   folder?: string
 }): Promise<void> {
-  const directoryHandle = await showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
+  let directoryHandle: FileSystemDirectoryHandle | null = null
+  let error: unknown
+  try {
+    directoryHandle = await window.showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      return
+    } else {
+      error = e
+    }
+  }
+  if (!directoryHandle) {
+    console.warn(`Failed to open directory picker, check if the browser supports it: ${error}`)
+    return await downloadTreelikeMultipleFilesToZip({ toastId, router, files, folder, basePath })
+  }
+
   const root = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
   const map = [{ path: basePath, dir: root }]
   let finished = 0,
