@@ -142,8 +142,7 @@ export async function downloadMultipleFiles({
   for (const { name, url } of files) {
     tasks.push(
       new Promise<void>((resolve, reject) => {
-        const absoluteURL = new URL(url, window.location.origin).toString()
-        multiDownloadWorker!.postMessage({ absoluteURL })
+        multiDownloadWorker!.postMessage({ url })
         multiDownloadWorker!.onmessage = async event => {
           const { blob } = event.data
           try {
@@ -301,8 +300,7 @@ export async function downloadTreelikeMultipleFiles({
     } else {
       tasks.push(
         new Promise<void>((resolve, reject) => {
-          const absoluteURL = new URL(url!, window.location.origin).toString()
-          multiDownloadWorker!.postMessage({ absoluteURL })
+          multiDownloadWorker!.postMessage({ url })
           multiDownloadWorker!.onmessage = async event => {
             const { blob } = event.data
             try {
