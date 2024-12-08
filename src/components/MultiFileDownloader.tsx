@@ -122,9 +122,9 @@ export async function downloadMultipleFiles({
   let finished = 0
 
   // Add selected file blobs to zip
-  files.forEach(({ name, url }) => {
-    dir.getFileHandle(name, { create: true }).then(fileHandle => {
-      fileHandle.createWritable().then(async writableStream => {
+  for (const { name, url } of files) {
+    await dir.getFileHandle(name, { create: true }).then(async fileHandle => {
+      await fileHandle.createWritable().then(async writableStream => {
         await writableStream.write(
           await fetch(url).then(r => {
             return r.blob()
@@ -137,7 +137,7 @@ export async function downloadMultipleFiles({
         })
       })
     })
-  })
+  }
 }
 
 async function downloadTreelikeMultipleFilesToZip({
@@ -267,8 +267,8 @@ export async function downloadTreelikeMultipleFiles({
       map.push({ path, dir: (await dir.getDirectoryHandle(name, { create: true }))! })
     } else {
       total++
-      dir.getFileHandle(name, { create: true }).then(fileHandle => {
-        fileHandle.createWritable().then(async writableStream => {
+      await dir.getFileHandle(name, { create: true }).then(async fileHandle => {
+        await fileHandle.createWritable().then(async writableStream => {
           await writableStream.write(
             await fetch(url!).then(r => {
               return r.blob()
