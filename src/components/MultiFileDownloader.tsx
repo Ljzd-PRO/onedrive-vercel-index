@@ -6,6 +6,7 @@ import { fetcher } from '../utils/fetchWithSWR'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import JSZip from 'jszip'
 import siteConfig from '../../config/site.config'
+import { getBaseUrl } from '../utils/getBaseUrl'
 
 /**
  * A loading toast component with file download progress support
@@ -92,7 +93,7 @@ async function concurrentDownload({
         blob = await response.blob()
       } catch (e) {
         promoteProcess()
-        toast.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
+        toast.error(`File download failed: ${new URL(url, getBaseUrl()).searchParams.get('path')}`)
         continue
       }
 
