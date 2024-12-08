@@ -6,6 +6,21 @@ import { fetcher } from '../utils/fetchWithSWR'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import JSZip from 'jszip'
 
+const multiDownloadWorkerBlob = new Blob(
+  [
+    `
+    onmessage = async function(e) {
+      const { url } = e.data;
+      const response = await fetch(url);
+      const blob = await response.blob();
+      postMessage({ blob });
+    }
+  `,
+  ],
+  { type: 'application/javascript' }
+)
+const multiDownloadWorker = new Worker(URL.createObjectURL(multiDownloadWorkerBlob))
+
 /**
  * A loading toast component with file download progress support
  * @param props
@@ -122,22 +137,33 @@ export async function downloadMultipleFiles({
   let finished = 0
   const tasks: Promise<void>[] = []
 
-  // Add selected file blobs to zip
+  // Download files and folders
   for (const { name, url } of files) {
     tasks.push(
-      dir.getFileHandle(name, { create: true }).then(async fileHandle => {
-        await fileHandle.createWritable().then(async writableStream => {
-          await writableStream.write(
-            await fetch(url).then(async r => {
-              return await r.blob()
-            })
-          )
-          await writableStream.close()
-          finished++
-          toast.loading(<DownloadingToast router={router} progress={((finished / files.length) * 100).toFixed(0)} />, {
-            id: toastId,
-          })
-        })
+      new Promise<void>((resolve, reject) => {
+        multiDownloadWorker.postMessage({ url })
+        multiDownloadWorker.onmessage = async event => {
+          const { blob } = event.data
+          try {
+            const fileHandle = await dir.getFileHandle(name, { create: true })
+            const writableStream = await fileHandle.createWritable()
+            await writableStream.write(blob)
+            await writableStream.close()
+            finished++
+            toast.loading(
+              <DownloadingToast router={router} progress={((finished / files.length) * 100).toFixed(0)} />,
+              {
+                id: toastId,
+              }
+            )
+            resolve()
+          } catch (err) {
+            reject(err)
+          }
+        }
+        multiDownloadWorker.onerror = error => {
+          reject(error)
+        }
       })
     )
   }
@@ -265,28 +291,36 @@ export async function downloadTreelikeMultipleFiles({
       throw new Error('File array does not satisfy requirement')
     }
 
-    // Add file or folder to zip
+    // Download files and folders
     const dir = map[map.length - 1 - i].dir
     if (isFolder) {
       map.push({ path, dir: (await dir.getDirectoryHandle(name, { create: true }))! })
     } else {
       tasks.push(
-        dir.getFileHandle(name, { create: true }).then(async fileHandle => {
-          await fileHandle.createWritable().then(async writableStream => {
-            await writableStream.write(
-              await fetch(url!).then(async r => {
-                return await r.blob()
-              })
-            )
-            await writableStream.close()
-            finished++
-            toast.loading(
-              <DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />,
-              {
-                id: toastId,
-              }
-            )
-          })
+        new Promise<void>((resolve, reject) => {
+          multiDownloadWorker.postMessage({ url })
+          multiDownloadWorker.onmessage = async event => {
+            const { blob } = event.data
+            try {
+              const fileHandle = await dir.getFileHandle(name, { create: true })
+              const writableStream = await fileHandle.createWritable()
+              await writableStream.write(blob)
+              await writableStream.close()
+              finished++
+              toast.loading(
+                <DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />,
+                {
+                  id: toastId,
+                }
+              )
+              resolve()
+            } catch (err) {
+              reject(err)
+            }
+          }
+          multiDownloadWorker.onerror = error => {
+            reject(error)
+          }
         })
       )
     }
