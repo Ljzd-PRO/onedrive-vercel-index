@@ -19,7 +19,7 @@ const multiDownloadWorkerBlob = new Blob(
   ],
   { type: 'application/javascript' }
 )
-let multiDownloadWorker: Worker | null = null
+const multiDownloadWorker = new Worker(URL.createObjectURL(multiDownloadWorkerBlob))
 
 /**
  * A loading toast component with file download progress support
@@ -136,14 +136,13 @@ export async function downloadMultipleFiles({
   const dir = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
   let finished = 0
   const tasks: Promise<void>[] = []
-  multiDownloadWorker = multiDownloadWorker ?? new Worker(URL.createObjectURL(multiDownloadWorkerBlob))
 
   // Download files and folders
   for (const { name, url } of files) {
     tasks.push(
       new Promise<void>((resolve, reject) => {
-        multiDownloadWorker!.postMessage({ url })
-        multiDownloadWorker!.onmessage = async event => {
+        multiDownloadWorker.postMessage({ url })
+        multiDownloadWorker.onmessage = async event => {
           const { blob } = event.data
           try {
             const fileHandle = await dir.getFileHandle(name, { create: true })
@@ -162,7 +161,7 @@ export async function downloadMultipleFiles({
             reject(err)
           }
         }
-        multiDownloadWorker!.onerror = error => {
+        multiDownloadWorker.onerror = error => {
           reject(error)
         }
       })
@@ -277,7 +276,6 @@ export async function downloadTreelikeMultipleFiles({
   const map = [{ path: basePath, dir: root }]
   let finished = 0
   const tasks: Promise<void>[] = []
-  multiDownloadWorker = multiDownloadWorker ?? new Worker(URL.createObjectURL(multiDownloadWorkerBlob))
 
   // Add selected file blobs to zip according to its path
   for await (const { name, url, path, isFolder } of files) {
@@ -300,8 +298,8 @@ export async function downloadTreelikeMultipleFiles({
     } else {
       tasks.push(
         new Promise<void>((resolve, reject) => {
-          multiDownloadWorker!.postMessage({ url })
-          multiDownloadWorker!.onmessage = async event => {
+          multiDownloadWorker.postMessage({ url })
+          multiDownloadWorker.onmessage = async event => {
             const { blob } = event.data
             try {
               const fileHandle = await dir.getFileHandle(name, { create: true })
@@ -320,7 +318,7 @@ export async function downloadTreelikeMultipleFiles({
               reject(err)
             }
           }
-          multiDownloadWorker!.onerror = error => {
+          multiDownloadWorker.onerror = error => {
             reject(error)
           }
         })
