@@ -141,7 +141,7 @@ export async function downloadMultipleFiles({
       })
     )
   }
-  await Promise.all(tasks)
+  await Promise.allSettled(tasks)
 }
 
 async function downloadTreelikeMultipleFilesToZip({
@@ -291,7 +291,7 @@ export async function downloadTreelikeMultipleFiles({
       )
     }
   }
-  await Promise.all(tasks)
+  await Promise.allSettled(tasks)
 }
 
 interface TraverseItem {
