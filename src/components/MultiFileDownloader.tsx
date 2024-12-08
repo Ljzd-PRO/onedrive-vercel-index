@@ -120,24 +120,28 @@ export async function downloadMultipleFiles({
 
   const dir = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
   let finished = 0
+  const tasks: Promise<void>[] = []
 
   // Add selected file blobs to zip
   for (const { name, url } of files) {
-    await dir.getFileHandle(name, { create: true }).then(async fileHandle => {
-      await fileHandle.createWritable().then(async writableStream => {
-        await writableStream.write(
-          await fetch(url).then(r => {
-            return r.blob()
+    tasks.push(
+      dir.getFileHandle(name, { create: true }).then(async fileHandle => {
+        await fileHandle.createWritable().then(async writableStream => {
+          await writableStream.write(
+            await fetch(url).then(r => {
+              return r.blob()
+            })
+          )
+          await writableStream.close()
+          finished++
+          toast.loading(<DownloadingToast router={router} progress={((finished / files.length) * 100).toFixed(0)} />, {
+            id: toastId,
           })
-        )
-        await writableStream.close()
-        finished++
-        toast.loading(<DownloadingToast router={router} progress={((finished / files.length) * 100).toFixed(0)} />, {
-          id: toastId,
         })
       })
-    })
+    )
   }
+  await Promise.all(tasks)
 }
 
 async function downloadTreelikeMultipleFilesToZip({
@@ -244,8 +248,8 @@ export async function downloadTreelikeMultipleFiles({
 
   const root = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
   const map = [{ path: basePath, dir: root }]
-  let finished = 0,
-    total = 0
+  let finished = 0
+  const tasks: Promise<void>[] = []
 
   // Add selected file blobs to zip according to its path
   for await (const { name, url, path, isFolder } of files) {
@@ -266,23 +270,28 @@ export async function downloadTreelikeMultipleFiles({
     if (isFolder) {
       map.push({ path, dir: (await dir.getDirectoryHandle(name, { create: true }))! })
     } else {
-      total++
-      await dir.getFileHandle(name, { create: true }).then(async fileHandle => {
-        await fileHandle.createWritable().then(async writableStream => {
-          await writableStream.write(
-            await fetch(url!).then(r => {
-              return r.blob()
-            })
-          )
-          await writableStream.close()
-          finished++
-          toast.loading(<DownloadingToast router={router} progress={((finished / total) * 100).toFixed(0)} />, {
-            id: toastId,
+      tasks.push(
+        dir.getFileHandle(name, { create: true }).then(async fileHandle => {
+          await fileHandle.createWritable().then(async writableStream => {
+            await writableStream.write(
+              await fetch(url!).then(r => {
+                return r.blob()
+              })
+            )
+            await writableStream.close()
+            finished++
+            toast.loading(
+              <DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />,
+              {
+                id: toastId,
+              }
+            )
           })
         })
-      })
+      )
     }
   }
+  await Promise.all(tasks)
 }
 
 interface TraverseItem {
