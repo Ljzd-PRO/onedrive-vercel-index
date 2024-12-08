@@ -68,7 +68,7 @@ async function concurrentDownload({
     if (queue.length === 0) return
 
     const { dir, name, url } = queue.shift()!
-    const response = await fetch(url, { keepalive: false })
+    const response = await fetch(url)
     const blob = await response.blob()
 
     const fileHandle = await dir.getFileHandle(name, { create: true })
