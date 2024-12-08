@@ -64,6 +64,12 @@ async function concurrentDownload({
 }): Promise<void> {
   let finished = 0
   const queue = tasks.slice()
+  const promoteProcess = () => {
+    finished++
+    toast.loading(<DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />, {
+      id: toastId,
+    })
+  }
   const downloadTask = async () => {
     while (queue.length > 0) {
       const { dir, name, url } = queue.shift()!
@@ -71,11 +77,11 @@ async function concurrentDownload({
       // Skip if file already exists
       try {
         await dir.getFileHandle(name)
-        finished++
+        promoteProcess()
         continue
       } catch (e) {
-        if (!(e instanceof DOMException) || e.name !== 'NotFoundError') {
-          finished++
+        if (!(e instanceof DOMException && e.name === 'NotFoundError')) {
+          promoteProcess()
           continue
         }
       }
@@ -85,7 +91,7 @@ async function concurrentDownload({
         const response = await fetch(url)
         blob = await response.blob()
       } catch (e) {
-        finished++
+        promoteProcess()
         console.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
         continue
       }
@@ -94,11 +100,7 @@ async function concurrentDownload({
       const writableStream = await fileHandle.createWritable()
       await writableStream.write(blob)
       await writableStream.close()
-
-      finished++
-      toast.loading(<DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />, {
-        id: toastId,
-      })
+      promoteProcess()
     }
   }
   const concurrentDownloads = Array.from({ length: siteConfig.maxDownloadConnections }).map(downloadTask)
