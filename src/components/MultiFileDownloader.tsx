@@ -1,6 +1,5 @@
 import { NextRouter } from 'next/router'
 import toast from 'react-hot-toast'
-import JSZip from 'jszip'
 import { useTranslation } from 'next-i18next'
 
 import { fetcher } from '../utils/fetchWithSWR'
@@ -72,9 +71,10 @@ export async function downloadMultipleFiles({
 }): Promise<void> {
   const directoryHandle = await showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
   const dir = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
+  let finished = 0
 
   // Add selected file blobs to zip
-  files.forEach(({ name, url }, index) => {
+  files.forEach(({ name, url }) => {
     dir.getFileHandle(name, { create: true }).then(fileHandle => {
       fileHandle.createWritable().then(async writableStream => {
         await writableStream.write(
@@ -83,7 +83,8 @@ export async function downloadMultipleFiles({
           })
         )
         await writableStream.close()
-        toast.loading(<DownloadingToast router={router} progress={(index / files.length).toFixed(0)} />, {
+        finished++
+        toast.loading(<DownloadingToast router={router} progress={(finished / files.length).toFixed(0)} />, {
           id: toastId,
         })
       })
@@ -120,9 +121,11 @@ export async function downloadTreelikeMultipleFiles({
   basePath: string
   folder?: string
 }): Promise<void> {
-  const zip = new JSZip()
-  const root = folder ? zip.folder(folder)! : zip
+  const directoryHandle = await showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
+  const root = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
   const map = [{ path: basePath, dir: root }]
+  let finished = 0,
+    total = 0
 
   // Add selected file blobs to zip according to its path
   for await (const { name, url, path, isFolder } of files) {
@@ -141,22 +144,25 @@ export async function downloadTreelikeMultipleFiles({
     // Add file or folder to zip
     const dir = map[map.length - 1 - i].dir
     if (isFolder) {
-      map.push({ path, dir: dir.folder(name)! })
+      map.push({ path, dir: (await dir.getDirectoryHandle(name, { create: true }))! })
     } else {
-      dir.file(
-        name,
-        fetch(url!).then(r => r.blob())
-      )
+      total++
+      dir.getFileHandle(name, { create: true }).then(fileHandle => {
+        fileHandle.createWritable().then(async writableStream => {
+          await writableStream.write(
+            await fetch(url!).then(r => {
+              return r.blob()
+            })
+          )
+          await writableStream.close()
+          finished++
+          toast.loading(<DownloadingToast router={router} progress={(finished / total).toFixed(0)} />, {
+            id: toastId,
+          })
+        })
+      })
     }
   }
-
-  // Create zip file and download it
-  const b = await zip.generateAsync({ type: 'blob' }, metadata => {
-    toast.loading(<DownloadingToast router={router} progress={metadata.percent.toFixed(0)} />, {
-      id: toastId,
-    })
-  })
-  downloadBlob({ blob: b, name: folder ? folder + '.zip' : 'download.zip' })
 }
 
 interface TraverseItem {
