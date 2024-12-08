@@ -66,17 +66,7 @@ async function concurrentDownload({
   const queue = tasks.slice()
   const downloadTask = async () => {
     if (queue.length === 0) return
-
     const { dir, name, url } = queue.shift()!
-    let blob: FileSystemWriteChunkType
-    try {
-      const response = await fetch(url)
-      blob = await response.blob()
-    } catch (e) {
-      console.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
-      if (queue.length > 0) await downloadTask()
-      return
-    }
 
     let fileHandle: FileSystemFileHandle
     try {
@@ -91,6 +81,16 @@ async function concurrentDownload({
         if (queue.length > 0) await downloadTask()
         return
       }
+    }
+
+    let blob: FileSystemWriteChunkType
+    try {
+      const response = await fetch(url)
+      blob = await response.blob()
+    } catch (e) {
+      console.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
+      if (queue.length > 0) await downloadTask()
+      return
     }
 
     const writableStream = await fileHandle.createWritable()
