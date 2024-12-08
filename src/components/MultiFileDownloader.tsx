@@ -64,6 +64,7 @@ async function concurrentDownload({
   tasks: { dir: FileSystemDirectoryHandle; name: string; url: string }[]
 }): Promise<void> {
   let finished = 0
+  let hasFailedTask = false
   const queue = tasks.slice()
   const promoteProcess = () => {
     finished++
@@ -92,6 +93,7 @@ async function concurrentDownload({
         const response = await fetch(url)
         blob = await response.blob()
       } catch (e) {
+        hasFailedTask = true
         promoteProcess()
         const path = new URL(url, getBaseUrl()).searchParams.get('path')
         toast.error(path)
@@ -108,7 +110,7 @@ async function concurrentDownload({
   }
   const concurrentDownloads = Array.from({ length: siteConfig.maxDownloadConnections }).map(downloadTask)
   await Promise.allSettled(concurrentDownloads).then(results => {
-    if (results.some(result => result.status === 'rejected')) throw Error('Concurrent Download failed')
+    if (hasFailedTask || results.some(result => result.status === 'rejected')) throw Error('Concurrent Download failed')
   })
 }
 
