@@ -71,16 +71,12 @@ export async function downloadMultipleFiles({
   folder?: string
 }): Promise<void> {
   const directoryHandle = await showDirectoryPicker({ id: 'multi-file-downloader', startIn: 'downloads' })
-  const dir = folder ? await directoryHandle.getDirectoryHandle(folder, {create: true}) : directoryHandle
+  const dir = folder ? await directoryHandle.getDirectoryHandle(folder, { create: true }) : directoryHandle
 
   // Add selected file blobs to zip
   files.forEach(({ name, url }, index) => {
-    dir.getFileHandle(
-      name,
-      { create: true },
-    ).then(fileHandle => {
-      fileHandle.createWritable()
-      .then(async writableStream => {
+    dir.getFileHandle(name, { create: true }).then(fileHandle => {
+      fileHandle.createWritable().then(async writableStream => {
         await writableStream.write(
           await fetch(url).then(r => {
             return r.blob()
