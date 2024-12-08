@@ -86,6 +86,7 @@ export async function downloadMultipleFiles({
             return r.blob()
           })
         )
+        await writableStream.close()
         toast.loading(<DownloadingToast router={router} progress={(index / files.length).toFixed(0)} />, {
           id: toastId,
         })
