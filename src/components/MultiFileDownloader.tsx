@@ -92,7 +92,7 @@ async function concurrentDownload({
         blob = await response.blob()
       } catch (e) {
         promoteProcess()
-        console.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
+        toast.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
         continue
       }
 
@@ -105,11 +105,7 @@ async function concurrentDownload({
   }
   const concurrentDownloads = Array.from({ length: siteConfig.maxDownloadConnections }).map(downloadTask)
   await Promise.allSettled(concurrentDownloads).then(results => {
-    if (results.some(result => result.status === 'rejected')) {
-      const message = 'Concurrent Download failed'
-      console.error(message)
-      throw Error(message)
-    }
+    if (results.some(result => result.status === 'rejected')) throw Error('Concurrent Download failed')
   })
 }
 
