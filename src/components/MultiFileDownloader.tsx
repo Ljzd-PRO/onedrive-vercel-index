@@ -98,7 +98,7 @@ async function concurrentDownload({
     await writableStream.close()
 
     finished++
-    toast.loading(<DownloadingToast router={router} progress={((finished / queue.length) * 100).toFixed(0)} />, {
+    toast.loading(<DownloadingToast router={router} progress={((finished / tasks.length) * 100).toFixed(0)} />, {
       id: toastId,
     })
     if (queue.length > 0) await downloadTask()
