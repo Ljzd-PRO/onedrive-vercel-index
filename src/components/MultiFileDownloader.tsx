@@ -68,18 +68,15 @@ async function concurrentDownload({
     while (queue.length > 0) {
       const { dir, name, url } = queue.shift()!
 
-      let fileHandle: FileSystemFileHandle
+      // Skip if file already exists
       try {
-        // Skip if file already exists
         await dir.getFileHandle(name)
-        finished++;
+        finished++
         continue
       } catch (e) {
-        if (e instanceof DOMException && e.name === 'NotFoundError') {
-          fileHandle = await dir.getFileHandle(name, { create: true })
-        } else {
-          finished++;
-          console.error(`Create download file failed: ${dir.name}/${name}`)
+        if (!(e instanceof DOMException) || e.name !== 'NotFoundError') {
+          finished++
+          console.info(`Download file existed: ${dir.name}/${name}`)
           continue
         }
       }
@@ -89,11 +86,12 @@ async function concurrentDownload({
         const response = await fetch(url)
         blob = await response.blob()
       } catch (e) {
-        finished++;
+        finished++
         console.error(`File download failed: ${new URL(url).searchParams.get('path')}`)
         continue
       }
 
+      const fileHandle = await dir.getFileHandle(name, { create: true })
       const writableStream = await fileHandle.createWritable()
       await writableStream.write(blob)
       await writableStream.close()
