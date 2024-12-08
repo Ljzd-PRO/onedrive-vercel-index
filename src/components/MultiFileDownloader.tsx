@@ -132,7 +132,7 @@ export async function downloadMultipleFiles({
         )
         await writableStream.close()
         finished++
-        toast.loading(<DownloadingToast router={router} progress={(finished / files.length).toFixed(0)} />, {
+        toast.loading(<DownloadingToast router={router} progress={((finished / files.length) * 100).toFixed(0)} />, {
           id: toastId,
         })
       })
@@ -276,7 +276,7 @@ export async function downloadTreelikeMultipleFiles({
           )
           await writableStream.close()
           finished++
-          toast.loading(<DownloadingToast router={router} progress={(finished / total).toFixed(0)} />, {
+          toast.loading(<DownloadingToast router={router} progress={((finished / total) * 100).toFixed(0)} />, {
             id: toastId,
           })
         })
