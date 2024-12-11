@@ -72,12 +72,12 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
-    case 'POST':
+    case 'GET':
       await handlePROPFIND(req, res)
       break
-    case 'GET':
-      await handleGET(req, res)
-      break
+    // case 'GET':
+    //   await handleGET(req, res)
+    //   break
     default:
       res.status(405).json({ error: 'Method Not Allowed' })
       break
