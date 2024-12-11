@@ -61,7 +61,7 @@ const handlePROPFIND = async (req: NextApiRequest, res: NextApiResponse) => {
     res.setHeader('Content-Type', 'application/xml; charset="utf-8"')
     res.status(207).send(xmlResponse)
   } catch (error) {
-    res.status(500).json({ error: 'Failed to list directory' })
+    res.status(500).json({ error: error })
   }
 }
 
