@@ -72,7 +72,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
-    case 'PROPFIND':
+    case 'POST':
       await handlePROPFIND(req, res)
       break
     case 'GET':
