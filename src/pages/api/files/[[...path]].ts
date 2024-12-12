@@ -45,6 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let nextPage = identityData.next
       let folderData = identityData.folder
       folderData.value = folderData.value ?? []
+      console.log(`folderData: ${folderData}`)
 
       do {
         const { data: nextFolderData } = await axios.get<OdFolderObject>(`${requestUrl}${isRoot ? '' : ':'}/children`, {
@@ -64,6 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         acc[item.name] = item
         return acc
       }, {} as Record<string, (typeof folderData.value)[number]>)
+      console.log(`folderDataDict: ${folderDataDict}`)
 
       return await serveHandler(
         req,
