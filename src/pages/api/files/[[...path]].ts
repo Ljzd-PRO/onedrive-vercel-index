@@ -73,6 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         req,
         res,
         {
+          public: '/',
           cleanUrls: false,
           rewrites: [{ source: '*', destination: path }],
         },
@@ -81,11 +82,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           lstat(lstatPath: PathLike, _: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
             // parameter callback will be undefined
             console.log(`serve-handler.lstat.path: ${lstatPath}`)
-            // Remove trailing slash and get true path (e.g. /var/task/H -> /H)
-            const cleanPath = lstatPath.toString().replace(/\/$/, '').replace(process.cwd(), '')
             let stats: Stats
             // Check if is root path
-            if (cleanPath === path || cleanPath === '') {
+            if (lstatPath === path) {
               stats = {
                 atime: new Date(),
                 atimeMs: 0,
