@@ -77,6 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         {
           // @ts-ignore
           lstat(path: PathLike, _: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
+            // parameter callback will be undefined
             const item = folderDataDict[pathPosix.basename(path.toString())]
             if (!item) return
             const stats: Stats = {
@@ -109,7 +110,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return stats
           },
           // @ts-ignore
+          realpath(_: PathLike, _: (err: NodeJS.ErrnoException | null, resolvedPath: string) => void) {
+            // parameter callback will be undefined
+            return
+          },
+          // @ts-ignore
           readdir(_: PathLike, _: (err: NodeJS.ErrnoException | null, files: string[]) => void) {
+            // parameter callback will be undefined
             return Object.keys(folderDataDict)
           },
         }
