@@ -81,34 +81,66 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           lstat(path: PathLike, _: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
             // parameter callback will be undefined
             console.log(`serve-handler.lstat.path: ${path}`)
-            const item = folderDataDict[pathPosix.basename(path.toString())]
-            if (!item) return
-            const stats: Stats = {
-              atime: dayjs(item.lastModifiedDateTime).toDate(),
-              atimeMs: dayjs(item.lastModifiedDateTime).millisecond(),
-              birthtime: dayjs(item.createdDateTime).toDate(),
-              birthtimeMs: dayjs(item.createdDateTime).millisecond(),
-              blksize: 0,
-              blocks: 0,
-              ctime: dayjs(item.createdDateTime).toDate(),
-              ctimeMs: dayjs(item.createdDateTime).millisecond(),
-              dev: 0,
-              gid: 0,
-              ino: 0,
-              mode: 0,
-              mtime: dayjs(item.lastModifiedDateTime).toDate(),
-              mtimeMs: dayjs(item.lastModifiedDateTime).millisecond(),
-              nlink: 0,
-              rdev: 0,
-              size: item.size,
-              uid: 0,
-              isBlockDevice: () => false,
-              isCharacterDevice: () => false,
-              isDirectory: () => !!item.folder,
-              isFIFO: () => false,
-              isFile: () => !!item.file,
-              isSocket: () => false,
-              isSymbolicLink: () => false,
+            const root = pathPosix.parse(process.cwd())
+            let stats: Stats
+            if (pathPosix.parse(path.toString()) === root) {
+              stats = {
+                atime: new Date(),
+                atimeMs: 0,
+                birthtime: new Date(),
+                birthtimeMs: 0,
+                blksize: 0,
+                blocks: 0,
+                ctime: new Date(),
+                ctimeMs: 0,
+                dev: 0,
+                gid: 0,
+                ino: 0,
+                mode: 0,
+                mtime: new Date(),
+                mtimeMs: 0,
+                nlink: 0,
+                rdev: 0,
+                size: 0,
+                uid: 0,
+                isBlockDevice: () => false,
+                isCharacterDevice: () => false,
+                isDirectory: () => true,
+                isFIFO: () => false,
+                isFile: () => false,
+                isSocket: () => false,
+                isSymbolicLink: () => false,
+              }
+            } else {
+              const item = folderDataDict[pathPosix.basename(path.toString())]
+              if (!item) return
+              stats = {
+                atime: dayjs(item.lastModifiedDateTime).toDate(),
+                atimeMs: dayjs(item.lastModifiedDateTime).millisecond(),
+                birthtime: dayjs(item.createdDateTime).toDate(),
+                birthtimeMs: dayjs(item.createdDateTime).millisecond(),
+                blksize: 0,
+                blocks: 0,
+                ctime: dayjs(item.createdDateTime).toDate(),
+                ctimeMs: dayjs(item.createdDateTime).millisecond(),
+                dev: 0,
+                gid: 0,
+                ino: 0,
+                mode: 0,
+                mtime: dayjs(item.lastModifiedDateTime).toDate(),
+                mtimeMs: dayjs(item.lastModifiedDateTime).millisecond(),
+                nlink: 0,
+                rdev: 0,
+                size: item.size,
+                uid: 0,
+                isBlockDevice: () => false,
+                isCharacterDevice: () => false,
+                isDirectory: () => !!item.folder,
+                isFIFO: () => false,
+                isFile: () => !!item.file,
+                isSocket: () => false,
+                isSymbolicLink: () => false,
+              }
             }
             console.log('serve-handler.lstat.return')
             console.log(stats)
