@@ -10,6 +10,10 @@ import { runCorsMiddleware } from '../raw'
 import { PathLike, Stats } from 'fs'
 import dayjs from 'dayjs'
 
+function escapeAllRegexChars(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const pathParts = (req.query.path ?? []) as string[]
   const path = pathPosix.resolve('/', ...pathParts)
@@ -76,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         {
           public: '/',
           cleanUrls: false,
-          rewrites: [{ source: '*', destination: path }],
+          rewrites: [{ source: '*', destination: escapeAllRegexChars(path) }],
         },
         {
           // @ts-ignore
