@@ -78,11 +78,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         {
           // @ts-ignore
-          lstat(path: PathLike, _: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
+          lstat(lstatPath: PathLike, _: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
             // parameter callback will be undefined
-            console.log(`serve-handler.lstat.path: ${path}`)
+            console.log(`serve-handler.lstat.path: ${lstatPath}`)
+            // Remove trailing slash and get true path (e.g. /var/task/H -> /H)
+            const cleanPath = lstatPath.toString().replace(/\/$/, '').replace(process.cwd(), '')
             let stats: Stats
-            if (path.toString().replace(/\/$/, '') === process.cwd()) {
+            // Check if is root path
+            if (cleanPath === path || cleanPath === '') {
               stats = {
                 atime: new Date(),
                 atimeMs: 0,
@@ -111,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 isSymbolicLink: () => false,
               }
             } else {
-              const item = folderDataDict[pathPosix.basename(path.toString())]
+              const item = folderDataDict[pathPosix.basename(lstatPath.toString())]
               if (!item) return
               stats = {
                 atime: dayjs(item.lastModifiedDateTime).toDate(),
