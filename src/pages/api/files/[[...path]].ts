@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: identityData } = await axios.get<OdAPIResponse>(requestUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
       params: {
-        select: 'id,name,size,file,folder,createdDateTime,lastModifiedDateTime,@microsoft.graph.downloadUrl',
+        select: 'id,name,size,file,folder,createdDateTime,lastModifiedDateTime',
       },
     })
 
@@ -165,8 +165,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await runCorsMiddleware(req, res)
       res.setHeader('Cache-Control', 'no-cache')
 
-      if (identityData['@microsoft.graph.downloadUrl']) {
-        res.redirect(identityData['@microsoft.graph.downloadUrl'])
+      const { data } = await axios.get(requestUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: {
+          select: 'id,@microsoft.graph.downloadUrl',
+        },
+      })
+
+      if ('@microsoft.graph.downloadUrl' in data) {
+        res.redirect(data['@microsoft.graph.downloadUrl'])
       } else {
         res.status(404).json({ error: 'No download url found.' })
       }

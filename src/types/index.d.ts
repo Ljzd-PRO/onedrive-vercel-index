@@ -4,7 +4,6 @@ export type OdAPIResponse = {
   file?: OdFileObject
   folder?: OdFolderObject
   next?: string
-  '@microsoft.graph.downloadUrl'?: string
 }
 // A folder object returned from the OneDrive API. This contains the parameter 'value', which is an array of items
 // inside the folder. The items may also be either files or folders.
