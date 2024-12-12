@@ -109,6 +109,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           realpath(path: PathLike, callback: (err: NodeJS.ErrnoException | null, resolvedPath: string) => void) {
             return callback(null, pathPosix.resolve('/', path.toString()))
           },
+          // @ts-ignore
+          readdir(_: PathLike, callback: (err: NodeJS.ErrnoException | null, files: string[]) => void) {
+            return callback(null, Object.keys(folderDataDict))
+          },
         }
       )
     } else {
