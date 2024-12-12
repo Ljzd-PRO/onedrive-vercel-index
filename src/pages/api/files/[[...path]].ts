@@ -76,10 +76,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         {
           // @ts-ignore
-          lstat(path: PathLike, callback: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
-            const item = folderDataDict[path.toString()]
+          lstat(path: PathLike, _: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
+            // parameter callback will be undefined
+            const item = folderDataDict[pathPosix.basename(path.toString())]
             if (!item) return
-            return callback(null, {
+            const stats: Stats = {
               atime: dayjs(item.lastModifiedDateTime).toDate(),
               atimeMs: dayjs(item.lastModifiedDateTime).millisecond(),
               birthtime: dayjs(item.createdDateTime).toDate(),
@@ -105,15 +106,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               isFile: () => !!item.file,
               isSocket: () => false,
               isSymbolicLink: () => false,
-            })
+            }
+            return stats
           },
           // @ts-ignore
-          realpath(path: PathLike, callback: (err: NodeJS.ErrnoException | null, resolvedPath: string) => void) {
-            return callback(null, pathPosix.resolve('/', path.toString()))
+          realpath(_: PathLike, _: (err: NodeJS.ErrnoException | null, resolvedPath: string) => void) {
+            // parameter callback will be undefined
+            return
           },
           // @ts-ignore
-          readdir(_: PathLike, callback: (err: NodeJS.ErrnoException | null, files: string[]) => void) {
-            return callback(null, Object.keys(folderDataDict))
+          readdir(_: PathLike, _: (err: NodeJS.ErrnoException | null, files: string[]) => void) {
+            // parameter callback will be undefined
+            return Object.keys(folderDataDict)
           },
         }
       )
