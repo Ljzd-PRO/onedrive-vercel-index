@@ -81,9 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           lstat(path: PathLike, _: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
             // parameter callback will be undefined
             console.log(`serve-handler.lstat.path: ${path}`)
-            const root = pathPosix.parse(process.cwd())
             let stats: Stats
-            if (pathPosix.parse(path.toString()) === root) {
+            if (path.toString().replace(/\/$/, '') === process.cwd()) {
               stats = {
                 atime: new Date(),
                 atimeMs: 0,
