@@ -55,6 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ...{
               select: 'id,name,size,file,folder,createdDateTime,lastModifiedDateTime',
               $top: siteConfig.maxItems,
+              ...(nextPage ? { $skipToken: nextPage } : {}),
             },
           },
         })
