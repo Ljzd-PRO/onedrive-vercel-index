@@ -44,7 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (identityData.folder) {
       let nextPage = identityData.next
       let folderData = identityData.folder
-      while (nextPage) {
+
+      do {
         const { data: nextFolderData } = await axios.get<OdFolderObject>(`${requestUrl}${isRoot ? '' : ':'}/children`, {
           headers: { Authorization: `Bearer ${accessToken}` },
           params: {
@@ -55,14 +56,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
         })
         folderData.value.push(...nextFolderData.value)
-
-        // Extract next page token from full @odata.nextLink
         nextPage = nextFolderData['@odata.nextLink']?.match(/&\$skiptoken=(.+)/i)![1]
-      }
+      } while (nextPage)
+
       const folderDataDict = folderData.value.reduce((acc, item) => {
         acc[item.name] = item
         return acc
       }, {} as Record<string, (typeof folderData.value)[number]>)
+
       return await serveHandler(
         req,
         res,
