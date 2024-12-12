@@ -1,6 +1,11 @@
 // API response object for /api/?path=<path_to_file_or_folder>, this may return either a file or a folder.
 // Pagination is also declared here with the 'next' parameter.
-export type OdAPIResponse = { file?: OdFileObject; folder?: OdFolderObject; next?: string }
+export type OdAPIResponse = {
+  file?: OdFileObject
+  folder?: OdFolderObject
+  next?: string
+  '@microsoft.graph.downloadUrl'?: string
+}
 // A folder object returned from the OneDrive API. This contains the parameter 'value', which is an array of items
 // inside the folder. The items may also be either files or folders.
 export type OdFolderObject = {
@@ -11,6 +16,7 @@ export type OdFolderObject = {
     id: string
     name: string
     size: number
+    createdDateTime?: string
     lastModifiedDateTime: string
     file?: { mimeType: string; hashes: { quickXorHash?: string; sha1Hash?: string; sha256Hash?: string } }
     folder?: { childCount: number; view: { sortBy: string; sortOrder: 'ascending'; viewType: 'thumbnails' } }
