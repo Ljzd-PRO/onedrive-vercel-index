@@ -44,6 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (identityData.folder) {
       let nextPage = identityData.next
       let folderData = identityData.folder
+      folderData.value = folderData.value ?? []
 
       do {
         const { data: nextFolderData } = await axios.get<OdFolderObject>(`${requestUrl}${isRoot ? '' : ':'}/children`, {
