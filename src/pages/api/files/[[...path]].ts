@@ -84,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // parameter callback will be undefined
             console.log(`serve-handler.lstat.path: ${lstatPath}`)
             let stats: Stats
-            // Check if is root path
+            // Check if the lstatPath is the request path itself
             if (lstatPath === path) {
               stats = {
                 atime: new Date(),
