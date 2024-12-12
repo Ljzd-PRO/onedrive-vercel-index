@@ -110,12 +110,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return stats
           },
           // @ts-ignore
-          realpath(_: PathLike, _: (err: NodeJS.ErrnoException | null, resolvedPath: string) => void) {
+          realpath(_: PathLike, __: (err: NodeJS.ErrnoException | null, resolvedPath: string) => void) {
             // parameter callback will be undefined
             return
           },
           // @ts-ignore
-          readdir(_: PathLike, _: (err: NodeJS.ErrnoException | null, files: string[]) => void) {
+          readdir(_: PathLike, __: (err: NodeJS.ErrnoException | null, files: string[]) => void) {
             // parameter callback will be undefined
             return Object.keys(folderDataDict)
           },
