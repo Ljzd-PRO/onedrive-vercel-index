@@ -80,6 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // @ts-ignore
           lstat(path: PathLike, _: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
             // parameter callback will be undefined
+            console.log(`serve-handler.lstat.path: ${path}`)
             const item = folderDataDict[pathPosix.basename(path.toString())]
             if (!item) return
             const stats: Stats = {
@@ -109,6 +110,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               isSocket: () => false,
               isSymbolicLink: () => false,
             }
+            console.log('serve-handler.lstat.return')
+            console.log(stats)
             return stats
           },
           // @ts-ignore
@@ -119,6 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // @ts-ignore
           readdir(_: PathLike, __: (err: NodeJS.ErrnoException | null, files: string[]) => void) {
             // parameter callback will be undefined
+            console.log(`serve-handler.readdir.return: ${Object.keys(folderDataDict).join(', ')}`)
             return Object.keys(folderDataDict)
           },
         }
