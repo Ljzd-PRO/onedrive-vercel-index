@@ -5,7 +5,7 @@ import axios from 'axios'
 import { checkAuthRoute, encodePath, getAccessToken } from '../index'
 import apiConfig from '../../../../config/api.config'
 import siteConfig from '../../../../config/site.config'
-import { OdAPIResponse, OdFolderObject } from '../../../types'
+import { OdAPIResponse, OdFolderChildren, OdFolderObject } from '../../../types'
 import { runCorsMiddleware } from '../raw'
 import { PathLike, Stats } from 'fs'
 import dayjs from 'dayjs'
@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const folderDataDict = folderData.value.reduce((acc, item) => {
         acc[item.name] = item
         return acc
-      }, {} as Record<string, (typeof folderData.value)[number]>)
+      }, {} as Record<string, OdFolderChildren>)
       console.log('folderDataDict')
       console.log(folderDataDict)
 
