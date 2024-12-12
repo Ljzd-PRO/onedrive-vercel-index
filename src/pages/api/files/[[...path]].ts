@@ -82,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // @ts-ignore
           lstat(lstatPath: PathLike, _: (err: NodeJS.ErrnoException | null, stats: Stats) => void) {
             // parameter callback will be undefined
-            console.log(`serve-handler.lstat.path: ${lstatPath}`)
+            console.log(`serve-handler.lstat.lstatPath: ${lstatPath}`)
             let stats: Stats
             // Check if the lstatPath is the request path itself
             if (lstatPath === path) {
@@ -149,8 +149,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return stats
           },
           // @ts-ignore
-          realpath(_: PathLike, __: (err: NodeJS.ErrnoException | null, resolvedPath: string) => void) {
+          realpath(realpathPath: PathLike, _: (err: NodeJS.ErrnoException | null, resolvedPath: string) => void) {
             // parameter callback will be undefined
+            console.log(`serve-handler.realpath.realpathPath: ${realpathPath}`)
             return
           },
           // @ts-ignore
